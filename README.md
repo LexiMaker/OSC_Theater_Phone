@@ -148,6 +148,10 @@ TheaterPhone uses three mechanisms to work reliably when the phone is locked:
 
 The app requests `audio` and `voip` background modes in `Info.plist`.
 
+## Inspiration
+
+*Reading about Stage Caller was the inspiration for tackling this project.*
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
