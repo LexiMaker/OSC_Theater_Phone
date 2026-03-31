@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>TheaterPhone needs network access to receive OSC commands.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_osc._udp</string>
+    </array>
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+        <string>voip</string>
+    </array>
+    <key>UILaunchScreen</key>
+    <dict>
+        <key>UIColorName</key>
+        <string>Black</string>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+    </array>
+</dict>
+</plist>

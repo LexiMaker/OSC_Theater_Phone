@@ -1,0 +1,93 @@
+{
+	"identifier": "com.theater.theaterphone",
+	"displayName": "TheaterPhone",
+	"grouping": "Theater",
+	"api": 1,
+	"messageType": "OSC",
+	"network": [
+		{
+			"transport": "UDP",
+			"defaultPort": 9000,
+			"canEditPort": true
+		}
+	],
+	"parameters": [
+		{
+			"key": "command",
+			"displayName": "Action",
+			"type": "menu",
+			"values": [
+				{ "Phone Call": "call" },
+				{ "Hang Up": "hangup" },
+				"---",
+				{ "SMS Message": "sms" },
+				"---",
+				{ "Vibrate": "vibrate" },
+				{ "Ping": "ping" }
+			]
+		}
+	],
+	"template": "/{command}",
+	"conditions": [
+		{
+			"predicate": "command == 'call'",
+			"template": "/call {caller_name} {caller_number}",
+			"parameters": [
+				{
+					"key": "caller_name",
+					"displayName": "Caller Name",
+					"type": "string",
+					"defaultValue": "Mom"
+				},
+				{
+					"key": "caller_number",
+					"displayName": "Number (optional)",
+					"type": "string",
+					"defaultValue": "+1 555 1234567"
+				}
+			]
+		},
+		{
+			"predicate": "command == 'hangup'",
+			"template": "/hangup"
+		},
+		{
+			"predicate": "command == 'sms'",
+			"template": "/sms {sms_sender} {sms_text}",
+			"parameters": [
+				{
+					"key": "sms_sender",
+					"displayName": "Sender",
+					"type": "string",
+					"defaultValue": "Max"
+				},
+				{
+					"key": "sms_text",
+					"displayName": "Message",
+					"type": "string",
+					"defaultValue": "Where are you?"
+				}
+			]
+		},
+		{
+			"predicate": "command == 'vibrate'",
+			"template": "/vibrate {vibrate_mode}",
+			"parameters": [
+				{
+					"key": "vibrate_mode",
+					"displayName": "Mode",
+					"type": "menu",
+					"values": [
+						{ "Single Pulse": "single" },
+						{ "Repeating Pattern": "pattern" },
+						{ "Stop": "stop" }
+					]
+				}
+			]
+		},
+		{
+			"predicate": "command == 'ping'",
+			"template": "/ping"
+		}
+	]
+}

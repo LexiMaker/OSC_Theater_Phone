@@ -1,0 +1,31 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code
+.claude/
