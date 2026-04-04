@@ -1,4 +1,4 @@
-// TheaterPhone v1.3.1
+// TheaterPhone v1.4.0
 import SwiftUI
 
 struct SettingsView: View {
@@ -9,10 +9,21 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("OSC Connection")) {
+                Section(header: Text("Connection")) {
+                    Picker("Mode", selection: $oscManager.mode) {
+                        ForEach(CommunicationMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .onChange(of: oscManager.mode) { _, _ in
+                        oscManager.startListening()
+                    }
                     HStack {
-                        Text("Status")
-                        Spacer()
+                        Text("Protocol"); Spacer()
+                        Text(oscManager.mode == .osc ? "UDP" : "UDP + TCP").foregroundColor(.secondary)
+                    }
+                    HStack {
+                        Text("Status"); Spacer()
                         HStack(spacing: 6) {
                             Circle().fill(oscManager.isListening ? Color.green : Color.red).frame(width: 8, height: 8)
                             Text(oscManager.isListening ? "Active" : "Inactive").foregroundColor(.secondary)
@@ -33,15 +44,29 @@ struct SettingsView: View {
                     }
                 }
 
-                Section(header: Text("OSC Commands")) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        CommandRow(command: "/call", args: "<Name> [Number]", desc: "Incoming call")
-                        CommandRow(command: "/hangup", args: "", desc: "End call")
-                        CommandRow(command: "/sms", args: "<Sender> <Text>", desc: "Receive SMS")
-                        CommandRow(command: "/vibrate", args: "[single|pattern|stop]", desc: "Vibration only")
-                        CommandRow(command: "/ping", args: "", desc: "App responds with /pong")
+                Section(header: Text("Commands")) {
+                    if oscManager.mode == .osc {
+                        VStack(alignment: .leading, spacing: 8) {
+                            CommandRow(command: "/call", args: "<Name> [Number]", desc: "Incoming call")
+                            CommandRow(command: "/hangup", args: "", desc: "End call")
+                            CommandRow(command: "/sms", args: "<Sender> <Text>", desc: "Receive SMS")
+                            CommandRow(command: "/vibrate", args: "[single|pattern|stop]", desc: "Vibration only")
+                            CommandRow(command: "/ping", args: "", desc: "App responds with /pong")
+                        }
+                        .font(.system(size: 13, design: .monospaced))
+                    } else {
+                        VStack(alignment: .leading, spacing: 8) {
+                            CommandRow(command: "call", args: "<Name> [Number]", desc: "Incoming call")
+                            CommandRow(command: "hangup", args: "", desc: "End call")
+                            CommandRow(command: "sms", args: "<Sender> <Text>", desc: "Receive SMS")
+                            CommandRow(command: "vibrate", args: "[single|pattern|stop]", desc: "Vibration only")
+                            CommandRow(command: "ping", args: "", desc: "App responds with pong")
+                        }
+                        .font(.system(size: 13, design: .monospaced))
+                        Text("Use quotes for arguments with spaces:\ncall \"Mom\" \"+1 555 1234567\"")
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundColor(.secondary)
                     }
-                    .font(.system(size: 13, design: .monospaced))
                 }
 
                 Section(header: Text("Test")) {
@@ -63,10 +88,10 @@ struct SettingsView: View {
                         footer: Text("Ringtone and message tone are controlled via iPhone Settings → Sounds & Haptics.")) {
                     HStack {
                         Text("Version"); Spacer()
-                        Text("1.3.1").foregroundColor(.secondary)
+                        Text("1.4.0").foregroundColor(.secondary)
                     }
                     HStack {
-                        Text("Last OSC Command"); Spacer()
+                        Text("Last Command"); Spacer()
                         Text(oscManager.lastReceivedMessage.isEmpty ? "–" : oscManager.lastReceivedMessage)
                             .foregroundColor(.secondary).lineLimit(1)
                     }

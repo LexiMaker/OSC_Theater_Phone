@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.4.0-experimental — 2026-04-04
+
+- Added communication mode switch: OSC (binary) or Plain Text
+- Plain Text mode accepts readable commands like `call "Mom" "+1 555"`
+- Plain Text mode supports both UDP and TCP on the same port
+- TCP listener starts/stops automatically when switching to/from Plain Text mode
+- Tokenizer supports quoted arguments with spaces
+- Pong response adapts to current mode (OSC binary or plain text)
+- Settings: mode picker, protocol display (UDP / UDP+TCP), conditional command docs
+- Python test script (`osc_send.py`) updated with `--plain` and `--tcp` flags
+- Interactive test mode supports mode switching (o/p/t)
+
 ## v1.3.3 — 2026-03-31
 
 - Restored in-app active call screen (iOS returns to app after accepting CallKit calls)

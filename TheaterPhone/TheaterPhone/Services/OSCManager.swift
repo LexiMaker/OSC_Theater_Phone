@@ -1,28 +1,56 @@
-// TheaterPhone v1.3.0
+// TheaterPhone v1.4.0
 import Foundation
 import Network
+
+enum CommunicationMode: String, CaseIterable {
+    case osc = "OSC"
+    case plainText = "Plain Text"
+}
 
 class OSCManager: ObservableObject {
     @Published var isListening = false
     @Published var port: UInt16 = 9000
     @Published var lastReceivedMessage: String = ""
     @Published var localIP: String = "..."
+    @Published var mode: CommunicationMode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "communicationMode") }
+    }
 
     var callManager: CallManager?
     var smsManager: SMSManager?
 
-    private var listener: NWListener?
+    private var udpListener: NWListener?
+    private var tcpListener: NWListener?
+
+    init() {
+        if let saved = UserDefaults.standard.string(forKey: "communicationMode"),
+           let m = CommunicationMode(rawValue: saved) {
+            mode = m
+        } else {
+            mode = .osc
+        }
+    }
 
     func startListening() {
         stopListening()
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
-            print("OSC Listener error: invalid port \(port)")
+            print("Listener error: invalid port \(port)")
             return
         }
+
+        // Always start UDP listener
+        startUDPListener(on: nwPort)
+
+        // In plain text mode, also start TCP listener
+        if mode == .plainText {
+            startTCPListener(on: nwPort)
+        }
+    }
+
+    private func startUDPListener(on nwPort: NWEndpoint.Port) {
         do {
-            let params = NWParameters.udp
-            listener = try NWListener(using: params, on: nwPort)
-            listener?.stateUpdateHandler = { [weak self] state in
+            udpListener = try NWListener(using: .udp, on: nwPort)
+            udpListener?.stateUpdateHandler = { [weak self] state in
                 DispatchQueue.main.async {
                     switch state {
                     case .ready:
@@ -34,19 +62,39 @@ class OSCManager: ObservableObject {
                     }
                 }
             }
-            listener?.newConnectionHandler = { [weak self] connection in
+            udpListener?.newConnectionHandler = { [weak self] connection in
                 connection.start(queue: .main)
-                self?.receiveData(on: connection)
+                self?.receiveUDPData(on: connection)
             }
-            listener?.start(queue: .main)
+            udpListener?.start(queue: .main)
         } catch {
-            print("OSC Listener error: \(error)")
+            print("UDP Listener error: \(error)")
+        }
+    }
+
+    private func startTCPListener(on nwPort: NWEndpoint.Port) {
+        do {
+            tcpListener = try NWListener(using: .tcp, on: nwPort)
+            tcpListener?.stateUpdateHandler = { state in
+                if case .failed(let error) = state {
+                    print("TCP Listener failed: \(error)")
+                }
+            }
+            tcpListener?.newConnectionHandler = { [weak self] connection in
+                connection.start(queue: .main)
+                self?.receiveTCPData(on: connection, buffer: Data())
+            }
+            tcpListener?.start(queue: .main)
+        } catch {
+            print("TCP Listener error: \(error)")
         }
     }
 
     func stopListening() {
-        listener?.cancel()
-        listener = nil
+        udpListener?.cancel()
+        udpListener = nil
+        tcpListener?.cancel()
+        tcpListener = nil
         isListening = false
     }
 
@@ -62,15 +110,61 @@ class OSCManager: ObservableObject {
         return data
     }
 
-    // MARK: - Receive
+    // MARK: - Receive UDP
 
-    private func receiveData(on connection: NWConnection) {
+    private func receiveUDPData(on connection: NWConnection) {
         connection.receiveMessage { [weak self] data, _, _, error in
+            guard let self = self else { return }
             if let data = data {
                 let remoteEndpoint = connection.currentPath?.remoteEndpoint
-                self?.parseOSC(data: data, remoteEndpoint: remoteEndpoint)
+                if self.mode == .osc {
+                    self.parseOSC(data: data, remoteEndpoint: remoteEndpoint)
+                } else {
+                    if let text = String(data: data, encoding: .utf8) {
+                        for line in text.components(separatedBy: "\n") {
+                            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                            if !trimmed.isEmpty {
+                                self.parsePlainText(line: trimmed, remoteEndpoint: remoteEndpoint)
+                            }
+                        }
+                    }
+                }
             }
-            if error == nil { self?.receiveData(on: connection) }
+            if error == nil { self.receiveUDPData(on: connection) }
+        }
+    }
+
+    // MARK: - Receive TCP
+
+    private func receiveTCPData(on connection: NWConnection, buffer: Data) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 4096) { [weak self] data, _, isComplete, error in
+            guard let self = self else { return }
+            var accumulated = buffer
+            if let data = data {
+                accumulated.append(data)
+                // Process complete lines
+                while let newlineRange = accumulated.range(of: Data([0x0A])) {
+                    let lineData = accumulated[accumulated.startIndex..<newlineRange.lowerBound]
+                    accumulated = Data(accumulated[newlineRange.upperBound...])
+                    if let line = String(data: lineData, encoding: .utf8)?
+                        .trimmingCharacters(in: .whitespacesAndNewlines), !line.isEmpty {
+                        let remoteEndpoint = connection.currentPath?.remoteEndpoint
+                        self.parsePlainText(line: line, remoteEndpoint: remoteEndpoint)
+                    }
+                }
+            }
+            if isComplete || error != nil {
+                // Process any remaining data without trailing newline
+                if !accumulated.isEmpty,
+                   let line = String(data: accumulated, encoding: .utf8)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines), !line.isEmpty {
+                    let remoteEndpoint = connection.currentPath?.remoteEndpoint
+                    self.parsePlainText(line: line, remoteEndpoint: remoteEndpoint)
+                }
+                connection.cancel()
+            } else {
+                self.receiveTCPData(on: connection, buffer: accumulated)
+            }
         }
     }
 
@@ -88,11 +182,16 @@ class OSCManager: ObservableObject {
         connection.stateUpdateHandler = { [weak self] state in
             guard let self = self else { return }
             if state == .ready {
-                var msg = Data()
-                msg.append(self.oscStringData("/theaterphone/pong"))
-                msg.append(self.oscStringData(",s"))
-                msg.append(self.oscStringData("ready"))
-                connection.send(content: msg, completion: .contentProcessed { _ in connection.cancel() })
+                if self.mode == .osc {
+                    var msg = Data()
+                    msg.append(self.oscStringData("/theaterphone/pong"))
+                    msg.append(self.oscStringData(",s"))
+                    msg.append(self.oscStringData("ready"))
+                    connection.send(content: msg, completion: .contentProcessed { _ in connection.cancel() })
+                } else {
+                    let msg = "pong ready\n".data(using: .utf8)!
+                    connection.send(content: msg, completion: .contentProcessed { _ in connection.cancel() })
+                }
             } else if case .failed = state {
                 connection.cancel()
             }
@@ -109,6 +208,85 @@ class OSCManager: ObservableObject {
             return hostStr
         default: return nil
         }
+    }
+
+    // MARK: - Plain Text Parsing
+
+    private func parsePlainText(line: String, remoteEndpoint: NWEndpoint?) {
+        let tokens = tokenize(line)
+        guard let command = tokens.first?.lowercased() else { return }
+        let args = Array(tokens.dropFirst())
+
+        DispatchQueue.main.async {
+            self.lastReceivedMessage = "Text: \(line)"
+        }
+
+        switch command {
+        case "ping":
+            if let senderIP = hostString(from: remoteEndpoint) {
+                sendPong(to: senderIP)
+            }
+        case "vibrate":
+            let vibMode = args.first?.lowercased() ?? "single"
+            DispatchQueue.main.async {
+                if vibMode == "pattern" || vibMode == "repeat" {
+                    AudioService.shared.startVibrationPattern()
+                } else if vibMode == "stop" {
+                    AudioService.shared.stopVibrationPattern()
+                } else {
+                    AudioService.shared.vibrate()
+                }
+            }
+        case "call":
+            let name = args.first ?? "Unknown"
+            let number = args.count > 1 ? args[1] : ""
+            DispatchQueue.main.async {
+                self.callManager?.incomingCall(name: name, number: number)
+            }
+        case "hangup", "endcall":
+            DispatchQueue.main.async {
+                self.callManager?.hangUp()
+            }
+        case "sms":
+            let sender = args.first ?? "Unknown"
+            let text = args.count > 1 ? args.dropFirst().joined(separator: " ") : ""
+            DispatchQueue.main.async {
+                self.smsManager?.receiveMessage(from: sender, text: text)
+            }
+        default:
+            print("Unknown plain text command: \(command)")
+        }
+    }
+
+    /// Tokenize a string, respecting quoted substrings.
+    /// e.g. `call "Mom" "+1 555 123"` → ["call", "Mom", "+1 555 123"]
+    private func tokenize(_ input: String) -> [String] {
+        var tokens: [String] = []
+        var current = ""
+        var inQuotes = false
+        var quoteChar: Character = "\""
+
+        for char in input {
+            if inQuotes {
+                if char == quoteChar {
+                    inQuotes = false
+                } else {
+                    current.append(char)
+                }
+            } else if char == "\"" || char == "'" {
+                inQuotes = true
+                quoteChar = char
+            } else if char == " " {
+                if !current.isEmpty {
+                    tokens.append(current)
+                    current = ""
+                }
+            } else {
+                current.append(char)
+            }
+        }
+        if !current.isEmpty { tokens.append(current) }
+        return tokens
     }
 
     // MARK: - OSC Parsing
