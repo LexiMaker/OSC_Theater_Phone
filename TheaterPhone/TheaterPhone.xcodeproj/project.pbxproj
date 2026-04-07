@@ -25,6 +25,7 @@
 		AA000017 /* CallKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000017 /* CallKitService.swift */; };
 		AA000018 /* BackgroundService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000018 /* BackgroundService.swift */; };
 		AA000019 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000019 /* NotificationService.swift */; };
+		AA000020 /* SoundLibraryManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB000020 /* SoundLibraryManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		AB000017 /* CallKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallKitService.swift; sourceTree = "<group>"; };
 		AB000018 /* BackgroundService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundService.swift; sourceTree = "<group>"; };
 		AB000019 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		AB000020 /* SoundLibraryManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundLibraryManager.swift; sourceTree = "<group>"; };
 		AB000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AC000001 /* TheaterPhone.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TheaterPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -99,6 +101,7 @@
 				AB000017 /* CallKitService.swift */,
 				AB000018 /* BackgroundService.swift */,
 				AB000019 /* NotificationService.swift */,
+				AB000020 /* SoundLibraryManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -213,6 +216,7 @@
 				AA000017 /* CallKitService.swift in Sources */,
 				AA000018 /* BackgroundService.swift in Sources */,
 				AA000019 /* NotificationService.swift in Sources */,
+				AA000020 /* SoundLibraryManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

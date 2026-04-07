@@ -1,10 +1,16 @@
 // TheaterPhone v1.4.0
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject var oscManager: OSCManager
+    @EnvironmentObject var soundLibrary: SoundLibraryManager
     @Environment(\.dismiss) var dismiss
     @State private var portText: String = ""
+    @State private var showFilePicker = false
+    @State private var showNameAlert = false
+    @State private var pendingFileURL: URL?
+    @State private var soundName: String = ""
 
     var body: some View {
         NavigationView {
@@ -51,6 +57,7 @@ struct SettingsView: View {
                             CommandRow(command: "/hangup", args: "", desc: "End call")
                             CommandRow(command: "/sms", args: "<Sender> <Text>", desc: "Receive SMS")
                             CommandRow(command: "/vibrate", args: "[single|pattern|stop]", desc: "Vibration only")
+                            CommandRow(command: "/audio", args: "<Name> | stop", desc: "Play/stop audio file")
                             CommandRow(command: "/ping", args: "", desc: "App responds with /pong")
                         }
                         .font(.system(size: 13, design: .monospaced))
@@ -60,6 +67,7 @@ struct SettingsView: View {
                             CommandRow(command: "hangup", args: "", desc: "End call")
                             CommandRow(command: "sms", args: "<Sender> <Text>", desc: "Receive SMS")
                             CommandRow(command: "vibrate", args: "[single|pattern|stop]", desc: "Vibration only")
+                            CommandRow(command: "audio", args: "<Name> | stop", desc: "Play/stop audio file")
                             CommandRow(command: "ping", args: "", desc: "App responds with pong")
                         }
                         .font(.system(size: 13, design: .monospaced))
@@ -67,6 +75,34 @@ struct SettingsView: View {
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundColor(.secondary)
                     }
+                }
+
+                Section(header: Text("Audio Library"),
+                        footer: Text("Import audio files and trigger them via \(oscManager.mode == .osc ? "/audio <name>" : "audio <name>"). Names are case-insensitive.")) {
+                    if soundLibrary.sounds.isEmpty {
+                        Text("No sounds loaded").foregroundColor(.secondary)
+                    } else {
+                        ForEach(soundLibrary.sounds) { sound in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(sound.name).bold()
+                                    Text(sound.fileName.components(separatedBy: ".").last?.uppercased() ?? "")
+                                        .font(.caption).foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                if soundLibrary.nowPlaying == sound.name {
+                                    Image(systemName: "speaker.wave.2.fill")
+                                        .foregroundColor(.green).font(.caption)
+                                }
+                            }
+                        }
+                        .onDelete { indexSet in
+                            for index in indexSet {
+                                soundLibrary.deleteSound(id: soundLibrary.sounds[index].id)
+                            }
+                        }
+                    }
+                    Button("Add Sound") { showFilePicker = true }
                 }
 
                 Section(header: Text("Test")) {
@@ -80,6 +116,14 @@ struct SettingsView: View {
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             oscManager.smsManager?.receiveMessage(from: "Max", text: "Where are you? The show is about to start!")
+                        }
+                    }
+                    if !soundLibrary.sounds.isEmpty {
+                        Button("Test Audio (\(soundLibrary.sounds.first!.name))") {
+                            soundLibrary.play(name: soundLibrary.sounds.first!.name)
+                        }
+                        if soundLibrary.nowPlaying != nil {
+                            Button("Stop Audio") { soundLibrary.stop() }
                         }
                     }
                 }
@@ -103,9 +147,59 @@ struct SettingsView: View {
                 ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() } }
             }
             .onAppear { portText = String(oscManager.port) }
+            .sheet(isPresented: $showFilePicker) {
+                AudioFilePicker { url in
+                    pendingFileURL = url
+                    soundName = url.deletingPathExtension().lastPathComponent
+                    showNameAlert = true
+                }
+            }
+            .alert("Sound Name", isPresented: $showNameAlert) {
+                TextField("Name", text: $soundName)
+                Button("Add") {
+                    guard let url = pendingFileURL, !soundName.isEmpty else { return }
+                    soundLibrary.importFile(from: url, name: soundName)
+                    pendingFileURL = nil
+                    soundName = ""
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingFileURL = nil
+                    soundName = ""
+                }
+            } message: {
+                Text("Enter a name for this sound. Use this name in OSC commands to play it.")
+            }
         }
     }
 }
+
+// MARK: - File Picker
+
+struct AudioFilePicker: UIViewControllerRepresentable {
+    let onPick: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let types: [UTType] = [.audio, .mp3, .wav, .aiff, UTType("public.mpeg-4-audio") ?? .audio]
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: true)
+        picker.delegate = context.coordinator
+        picker.allowsMultipleSelection = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            if let url = urls.first { onPick(url) }
+        }
+    }
+}
+
+// MARK: - Command Row
 
 struct CommandRow: View {
     let command: String; let args: String; let desc: String

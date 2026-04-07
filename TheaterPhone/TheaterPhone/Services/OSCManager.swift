@@ -18,6 +18,7 @@ class OSCManager: ObservableObject {
 
     var callManager: CallManager?
     var smsManager: SMSManager?
+    var soundLibrary: SoundLibraryManager?
 
     private var udpListener: NWListener?
     private var tcpListener: NWListener?
@@ -253,6 +254,15 @@ class OSCManager: ObservableObject {
             DispatchQueue.main.async {
                 self.smsManager?.receiveMessage(from: sender, text: text)
             }
+        case "audio":
+            let name = args.first?.lowercased() ?? ""
+            DispatchQueue.main.async {
+                if name == "stop" {
+                    self.soundLibrary?.stop()
+                } else if !name.isEmpty {
+                    self.soundLibrary?.play(name: name)
+                }
+            }
         default:
             print("Unknown plain text command: \(command)")
         }
@@ -337,6 +347,17 @@ class OSCManager: ObservableObject {
             let text = args.count > 1 ? args.dropFirst().joined(separator: " ") : ""
             DispatchQueue.main.async {
                 self.smsManager?.receiveMessage(from: sender, text: text)
+            }
+        }
+        else if path == "/audio" {
+            let args = parseOSCArguments(data: data, offset: addressEndOffset)
+            let name = args.first?.lowercased() ?? ""
+            DispatchQueue.main.async {
+                if name == "stop" {
+                    self.soundLibrary?.stop()
+                } else if !name.isEmpty {
+                    self.soundLibrary?.play(name: name)
+                }
             }
         }
     }

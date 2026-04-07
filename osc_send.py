@@ -138,6 +138,8 @@ def interactive():
     print(f"     5  Vibration (Muster)")
     print(f"     6  Vibration stoppen")
     print(f"     7  Ping (wartet auf Pong)")
+    print(f"     8  Audio abspielen")
+    print(f"     9  Audio stoppen")
     print(f"     ip <adresse>  Ziel-IP ändern")
     print(f"     o/p/t  Modus wechseln")
     print(f"     q  Beenden\n")
@@ -185,8 +187,13 @@ def interactive():
                 send_osc("/vibrate", "stop")
             elif cmd == "7":
                 send_ping_osc()
+            elif cmd == "8":
+                name = input("    Sound-Name: ").strip()
+                if name: send_osc("/audio", name)
+            elif cmd == "9":
+                send_osc("/audio", "stop")
             else:
-                print("    ? Unbekannter Befehl (1-7/o/p/t/ip/q)")
+                print("    ? Unbekannter Befehl (1-9/o/p/t/ip/q)")
         else:
             # Plain text mode (UDP or TCP)
             use_tcp = (mode == "t")
@@ -210,8 +217,13 @@ def interactive():
                 send_plain("vibrate stop", use_tcp)
             elif cmd == "7":
                 send_ping_plain(use_tcp)
+            elif cmd == "8":
+                name = input("    Sound-Name: ").strip()
+                if name: send_plain(f"audio {name}", use_tcp)
+            elif cmd == "9":
+                send_plain("audio stop", use_tcp)
             else:
-                print("    ? Unbekannter Befehl (1-7/o/p/t/ip/q)")
+                print("    ? Unbekannter Befehl (1-9/o/p/t/ip/q)")
 
 
 # --- CLI mode ---
@@ -250,11 +262,14 @@ if __name__ == "__main__":
         elif cmd == "vibrate":
             vibmode = cmd_args[0] if cmd_args else "single"
             send_plain(f"vibrate {vibmode}", use_tcp)
+        elif cmd == "audio":
+            name = cmd_args[0] if cmd_args else "stop"
+            send_plain(f"audio {name}", use_tcp)
         elif cmd == "ping":
             send_ping_plain(use_tcp)
         else:
             print(f"Unbekannter Befehl: {cmd}")
-            print("Verfügbar: call, hangup, sms, vibrate, ping")
+            print("Verfügbar: call, hangup, sms, vibrate, audio, ping")
     else:
         # OSC mode (Standard)
         if cmd == "call":
@@ -269,8 +284,11 @@ if __name__ == "__main__":
         elif cmd == "vibrate":
             vibmode = cmd_args[0] if cmd_args else "single"
             send_osc("/vibrate", vibmode)
+        elif cmd == "audio":
+            name = cmd_args[0] if cmd_args else "stop"
+            send_osc("/audio", name)
         elif cmd == "ping":
             send_ping_osc()
         else:
             print(f"Unbekannter Befehl: {cmd}")
-            print("Verfügbar: call, hangup, sms, vibrate, ping")
+            print("Verfügbar: call, hangup, sms, vibrate, audio, ping")
