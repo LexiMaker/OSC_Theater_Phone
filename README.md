@@ -1,6 +1,6 @@
 # TheaterPhone
 
-An iOS app that receives **OSC commands** over Wi-Fi to simulate realistic incoming phone calls and SMS messages on stage. Designed for theater productions where an actor's phone needs to ring or receive messages on cue.
+An iOS app that receives **OSC commands** (or **plain text** via UDP/TCP) over Wi-Fi to simulate realistic incoming phone calls and SMS messages on stage. Designed for theater productions where an actor's phone needs to ring or receive messages on cue.
 
 ![iOS](https://img.shields.io/badge/iOS-17%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
@@ -12,23 +12,28 @@ A show control system (like **QLab**) sends an OSC command over the local networ
 
 ```
 QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
-                                 ├── /call  → Native incoming call (CallKit)
-                                 ├── /sms   → Native notification + iMessage chat
-                                 ├── /hangup → End call remotely
+                                 ├── /call    → Native incoming call (CallKit)
+                                 ├── /sms     → Native notification + iMessage chat
+                                 ├── /hangup  → End call remotely
                                  ├── /vibrate → Vibration pulse or pattern
-                                 └── /ping  → Responds with /pong (alive check)
+                                 ├── /audio   → Play imported sound file
+                                 └── /ping    → Responds with /pong (alive check)
 ```
 
 ## Features
 
 - **Native incoming calls** via CallKit — full iOS call screen, works on lock screen
 - **SMS notifications** via iOS notification system — tap to open iMessage-style chat
+- **Audio playback** — import sound files (mp3, wav, aiff, m4a) and trigger them by name
 - **Ringtone & message tone** controlled via iPhone Settings → Sounds & Haptics (uses the real system sounds)
-- **Background mode** — OSC listener stays active when the phone is locked
+- **Two communication modes** — OSC (binary, UDP) or Plain Text (UDP + TCP) — switchable in Settings
+- **Background mode** — listener stays active when the phone is locked
 - **Ping/Pong** — QLab can check if the app is running before sending commands, with automatic fallback
-- **Vibration control** — trigger vibration remotely via OSC
+- **Vibration control** — trigger vibration remotely
 
-## OSC Commands
+## Commands
+
+### OSC Mode (default)
 
 | Command | Arguments | Description |
 |---------|-----------|-------------|
@@ -36,18 +41,39 @@ QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
 | `/hangup` | — | End current call remotely |
 | `/sms` | `<Sender> <Text>` | Send SMS notification |
 | `/vibrate` | `[single\|pattern\|stop]` | Vibration only (default: single) |
+| `/audio` | `<Name> \| stop` | Play imported sound file / stop playback |
 | `/ping` | — | App responds with `/pong` on port 9001 |
+
+### Plain Text Mode (UDP + TCP)
+
+Switch to Plain Text mode in Settings for simpler integrations that don't support OSC binary protocol.
+
+| Command | Arguments | Description |
+|---------|-----------|-------------|
+| `call` | `<Name> [Number]` | Trigger incoming call |
+| `hangup` | — | End current call remotely |
+| `sms` | `<Sender> <Text>` | Send SMS notification |
+| `vibrate` | `[single\|pattern\|stop]` | Vibration only (default: single) |
+| `audio` | `<Name> \| stop` | Play imported sound file / stop playback |
+| `ping` | — | App responds with `pong ready` on port 9001 |
+
+Use quotes for arguments with spaces: `call "Mom" "+1 555 1234567"`
 
 ### Examples
 
 ```
+# OSC mode
 /call "Mom" "+1 555 1234567"    → Incoming call from Mom
-/call "Director"                → Incoming call (no number shown)
 /sms "Max" "Where are you?"    → SMS notification from Max
+/audio doorbell                 → Plays the sound named "doorbell"
+/audio stop                     → Stops current audio playback
 /hangup                         → Ends the active call
-/vibrate pattern                → Repeating vibration
-/vibrate stop                   → Stop vibration
-/ping                           → Returns /theaterphone/pong on port 9001
+
+# Plain Text mode (same commands without /)
+call "Mom" "+1 555 1234567"
+sms "Max" "Where are you?"
+audio doorbell
+hangup
 ```
 
 ## Requirements
@@ -55,7 +81,7 @@ QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
 - iPhone with **iOS 17** or later
 - Mac with **Xcode 15+** for building
 - Both devices on the **same Wi-Fi network**
-- OSC-capable show control software (QLab, ETC Eos, etc.) or the included Python test script
+- OSC-capable show control software (QLab, ETC Eos, etc.), a plain text sender, or the included Python test script
 
 ## Installation
 
@@ -68,23 +94,42 @@ QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
 
 > **Tip:** Set your preferred ringtone and message tone in iPhone Settings → Sounds & Haptics before the show.
 
+## Audio Library
+
+Import sound files (mp3, wav, aiff, m4a) to play them on cue — great for doorbell rings, ambient sounds, or custom effects.
+
+1. Open **Settings** (gear icon) → **Audio Library**
+2. Tap **Add Sound** → select a file from your iPhone
+3. Give it a name (e.g. `doorbell`)
+4. Trigger it via OSC: `/audio doorbell` or Plain Text: `audio doorbell`
+5. Stop playback: `/audio stop`
+
+Sound names are case-insensitive. Files are stored within the app and persist across restarts.
+
 ## Testing Without QLab
 
-Use the included Python script to send OSC commands from any computer:
+Use the included Python script to send commands from any computer:
 
 ```bash
-# Interactive mode
+# Interactive mode (supports OSC, Plain Text UDP, Plain Text TCP)
 python3 osc_send.py
 
-# Direct commands
+# Direct OSC commands
 python3 osc_send.py call "Mom" "+1 555 1234567"
 python3 osc_send.py sms "Max" "Break a leg!"
 python3 osc_send.py hangup
-python3 osc_send.py vibrate pattern
+python3 osc_send.py audio doorbell
 python3 osc_send.py ping
+
+# Plain Text mode (UDP)
+python3 osc_send.py --plain call "Mom"
+python3 osc_send.py --plain audio doorbell
+
+# Plain Text mode (TCP)
+python3 osc_send.py --plain --tcp sms "Max" "Hello!"
 ```
 
-Edit `TARGET_IP` in `osc_send.py` to match your iPhone's IP address (shown in the app).
+Edit `TARGET_IP` in `osc_send.py` to match your iPhone's IP address (shown in the app). In interactive mode, use `ip <address>` to change it on the fly, and `o`/`p`/`t` to switch between OSC, Plain Text UDP, and Plain Text TCP.
 
 ## QLab 5 Integration
 
@@ -120,7 +165,8 @@ Each script sends `/ping`, waits 2 seconds for `/pong`, then triggers either `ph
 │       │   ├── CallState.swift     # Call state machine
 │       │   └── SMSState.swift      # SMS message model
 │       ├── Services/
-│       │   ├── OSCManager.swift    # OSC listener + parser (UDP)
+│       │   ├── OSCManager.swift    # OSC + Plain Text listener (UDP/TCP)
+│       │   ├── SoundLibraryManager.swift # Audio file import + playback
 │       │   ├── CallKitService.swift # Native iOS call integration
 │       │   ├── NotificationService.swift # iOS notifications
 │       │   ├── AudioService.swift  # Vibration control
@@ -131,7 +177,7 @@ Each script sends `/ping`, waits 2 seconds for `/pong`, then triggers either `ph
 │           ├── ActiveCallView.swift # In-call screen (after accepting)
 │           ├── CallEndedView.swift  # Brief "Call Ended" display
 │           ├── SMSConversationView.swift # iMessage-style chat
-│           └── SettingsView.swift   # OSC config + test buttons
+│           └── SettingsView.swift   # Connection config, audio library, tests
 ├── QLab Script Cues/              # AppleScript fallback cues
 ├── TheaterPhone.qlabnetwork       # QLab 5 network device preset
 ├── osc_send.py                    # Python OSC test tool
