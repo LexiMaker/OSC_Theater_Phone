@@ -1,9 +1,11 @@
 # TheaterPhone
 
-An iOS app that receives **OSC commands** (or **plain text** via UDP/TCP) over Wi-Fi to simulate realistic incoming phone calls and SMS messages on stage. Designed for theater productions where an actor's phone needs to ring or receive messages on cue.
+An **iOS & Android** app that receives **OSC commands** (or **plain text** via UDP/TCP) over Wi-Fi to simulate realistic incoming phone calls and SMS messages on stage. Designed for theater productions where an actor's phone needs to ring or receive messages on cue.
 
 ![iOS](https://img.shields.io/badge/iOS-17%2B-blue)
+![Android](https://img.shields.io/badge/Android-8.0%2B-brightgreen)
 ![Swift](https://img.shields.io/badge/Swift-5.9-orange)
+![Kotlin](https://img.shields.io/badge/Kotlin-1.9-purple)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ## How It Works
@@ -11,9 +13,9 @@ An iOS app that receives **OSC commands** (or **plain text** via UDP/TCP) over W
 A show control system (like **QLab**) sends an OSC command over the local network → the iPhone receives it and triggers a native phone call or SMS notification — indistinguishable from the real thing.
 
 ```
-QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
-                                 ├── /call    → Native incoming call (CallKit)
-                                 ├── /sms     → Native notification + iMessage chat
+QLab / OSC Sender  ──UDP──▶  iPhone / Android (TheaterPhone App)
+                                 ├── /call    → Native incoming call
+                                 ├── /sms     → Native notification + chat view
                                  ├── /hangup  → End call remotely
                                  ├── /vibrate → Vibration pulse or pattern
                                  ├── /audio   → Play imported sound file
@@ -22,14 +24,14 @@ QLab / OSC Sender  ──UDP──▶  iPhone (TheaterPhone App)
 
 ## Features
 
-- **Native incoming calls** via CallKit — full iOS call screen, works on lock screen
-- **SMS notifications** via iOS notification system — tap to open iMessage-style chat
-- **Audio playback** — import sound files (mp3, wav, aiff, m4a) and trigger them by name
-- **Ringtone & message tone** controlled via iPhone Settings → Sounds & Haptics (uses the real system sounds)
+- **Native incoming calls** — CallKit on iOS, full-screen notification on Android — works on lock screen
+- **SMS notifications** — native notifications on both platforms, tap to open iMessage-style chat
+- **Audio playback** — import sound files and trigger them by name
 - **Two communication modes** — OSC (binary, UDP) or Plain Text (UDP + TCP) — switchable in Settings
 - **Background mode** — listener stays active when the phone is locked
-- **Ping/Pong** — QLab can check if the app is running before sending commands, with automatic fallback
+- **Ping/Pong** — QLab can check if the app is running before sending commands
 - **Vibration control** — trigger vibration remotely
+- **Cross-platform** — identical command set for iOS and Android, use the same QLab cues for both
 
 ## Commands
 
@@ -78,12 +80,14 @@ hangup
 
 ## Requirements
 
-- iPhone with **iOS 17** or later
-- Mac with **Xcode 15+** for building
+- **iOS:** iPhone with iOS 17+, Mac with Xcode 15+
+- **Android:** Phone with Android 8.0+ (API 26), Android Studio
 - Both devices on the **same Wi-Fi network**
 - OSC-capable show control software (QLab, ETC Eos, etc.), a plain text sender, or the included Python test script
 
 ## Installation
+
+### iOS
 
 1. Clone this repository
 2. Open `TheaterPhone/TheaterPhone.xcodeproj` in Xcode
@@ -93,6 +97,18 @@ hangup
 6. Note the IP address shown on the lock screen
 
 > **Tip:** Set your preferred ringtone and message tone in iPhone Settings → Sounds & Haptics before the show.
+
+### Android
+
+1. Clone this repository
+2. Open the `TheaterPhoneAndroid/` folder in Android Studio
+3. Wait for Gradle sync to complete
+4. Connect your Android phone via USB (enable USB debugging)
+5. Build and run (▶️)
+6. Allow notification permissions when prompted
+7. Note the IP address shown on the lock screen
+
+> **Tip:** Disable battery optimization for TheaterPhone in Android Settings → Apps → TheaterPhone → Battery → Unrestricted. This prevents the OS from killing the background listener during a show.
 
 ## Audio Library
 
@@ -158,41 +174,72 @@ Each script sends `/ping`, waits 2 seconds for `/pong`, then triggers either `ph
 ## Project Structure
 
 ```
-├── TheaterPhone/                  # Xcode project
+├── TheaterPhone/                  # iOS app (Xcode / Swift / SwiftUI)
 │   └── TheaterPhone/
-│       ├── TheaterPhoneApp.swift   # App entry point
+│       ├── TheaterPhoneApp.swift
 │       ├── Models/
-│       │   ├── CallState.swift     # Call state machine
-│       │   └── SMSState.swift      # SMS message model
+│       │   ├── CallState.swift
+│       │   └── SMSState.swift
 │       ├── Services/
-│       │   ├── OSCManager.swift    # OSC + Plain Text listener (UDP/TCP)
-│       │   ├── SoundLibraryManager.swift # Audio file import + playback
-│       │   ├── CallKitService.swift # Native iOS call integration
-│       │   ├── NotificationService.swift # iOS notifications
-│       │   ├── AudioService.swift  # Vibration control
-│       │   └── BackgroundService.swift # Keeps app alive when locked
+│       │   ├── OSCManager.swift        # OSC + Plain Text listener
+│       │   ├── SoundLibraryManager.swift
+│       │   ├── CallKitService.swift
+│       │   ├── NotificationService.swift
+│       │   ├── AudioService.swift
+│       │   └── BackgroundService.swift
 │       └── Views/
-│           ├── ContentView.swift   # Main view controller
-│           ├── LockScreenView.swift # Idle screen with OSC status
-│           ├── ActiveCallView.swift # In-call screen (after accepting)
-│           ├── CallEndedView.swift  # Brief "Call Ended" display
-│           ├── SMSConversationView.swift # iMessage-style chat
-│           └── SettingsView.swift   # Connection config, audio library, tests
+│           ├── ContentView.swift
+│           ├── LockScreenView.swift
+│           ├── ActiveCallView.swift
+│           ├── CallEndedView.swift
+│           ├── SMSConversationView.swift
+│           └── SettingsView.swift
+│
+├── TheaterPhoneAndroid/           # Android app (Kotlin / Jetpack Compose)
+│   └── app/src/main/java/com/theaterphone/
+│       ├── service/
+│       │   ├── OscListenerService.kt   # Foreground Service (UDP/TCP)
+│       │   ├── OscParser.kt            # OSC binary protocol parser
+│       │   ├── PlainTextParser.kt      # Plain text tokenizer
+│       │   └── CommandDispatcher.kt    # Routes commands to managers
+│       ├── call/
+│       │   ├── CallManager.kt          # Call state machine
+│       │   ├── CallNotificationHelper.kt # Full-screen call notification
+│       │   └── IncomingCallActivity.kt # Lock screen call UI
+│       ├── sms/
+│       │   ├── SmsManager.kt           # SMS state + messages
+│       │   └── SmsNotificationHelper.kt
+│       ├── audio/
+│       │   ├── AudioService.kt         # Vibration + tones
+│       │   └── SoundLibraryManager.kt  # Audio file import + playback
+│       └── ui/screen/
+│           ├── LockScreen.kt
+│           ├── ActiveCallScreen.kt
+│           ├── CallEndedScreen.kt
+│           ├── SmsConversationScreen.kt
+│           └── SettingsScreen.kt
+│
 ├── QLab Script Cues/              # AppleScript fallback cues
 ├── TheaterPhone.qlabnetwork       # QLab 5 network device preset
-├── osc_send.py                    # Python OSC test tool
+├── osc_send.py                    # Python test tool (OSC + Plain Text)
 └── osc_ping_test.py               # Ping/Pong debug script
 ```
 
 ## How It Stays Alive on Lock Screen
 
-TheaterPhone uses three mechanisms to work reliably when the phone is locked:
-
+### iOS
 1. **CallKit** — iOS natively handles incoming call UI on the lock screen
 2. **Background Audio** — A silent audio loop keeps the app process alive
 3. **Local Notifications** — SMS messages appear as native iOS notifications
 
 The app requests `audio` and `voip` background modes in `Info.plist`.
+
+### Android
+1. **Foreground Service** — A persistent notification keeps the listener running
+2. **Wake Lock** — Prevents the CPU from sleeping while waiting for commands
+3. **Full-Screen Intent** — Incoming calls show over the lock screen via high-priority notification
+
+> **Note:** Some manufacturers (Samsung, Xiaomi, Huawei) aggressively kill background services. Disable battery optimization for TheaterPhone before the show.
 
 ## Inspiration
 
