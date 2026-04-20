@@ -23,6 +23,10 @@
 				{ "SMS Message": "sms" },
 				"---",
 				{ "Vibrate": "vibrate" },
+				"---",
+				{ "Play Audio": "audio" },
+				{ "Stop Audio": "audio_stop" },
+				"---",
 				{ "Ping": "ping" }
 			]
 		}
@@ -84,6 +88,22 @@
 					]
 				}
 			]
+		},
+		{
+			"predicate": "command == 'audio'",
+			"template": "/audio {audio_name}",
+			"parameters": [
+				{
+					"key": "audio_name",
+					"displayName": "Sound Name",
+					"type": "string",
+					"defaultValue": "doorbell"
+				}
+			]
+		},
+		{
+			"predicate": "command == 'audio_stop'",
+			"template": "/audio stop"
 		},
 		{
 			"predicate": "command == 'ping'",
