@@ -4,10 +4,7 @@ import com.theaterphone.data.model.OscCommand
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * Parses OSC (Open Sound Control) binary protocol messages.
- * Port of the iOS OSCManager.swift parser.
- */
+/** Parses OSC (Open Sound Control) binary protocol messages. */
 object OscParser {
 
     fun parse(data: ByteArray): OscCommand? {

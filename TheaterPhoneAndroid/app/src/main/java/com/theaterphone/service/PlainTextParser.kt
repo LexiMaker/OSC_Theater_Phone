@@ -2,10 +2,7 @@ package com.theaterphone.service
 
 import com.theaterphone.data.model.OscCommand
 
-/**
- * Parses plain text commands like: call "Mom" "+1 555 1234567"
- * Port of the iOS OSCManager.swift tokenizer + parsePlainText.
- */
+/** Parses plain text commands like: call "Mom" "+1 555 1234567" */
 object PlainTextParser {
 
     fun parse(line: String): OscCommand? {

@@ -5,10 +5,6 @@ import com.theaterphone.data.model.SmsMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Manages SMS messages and conversation state.
- * Port of iOS SMSManager.
- */
 class SmsManager {
 
     private val _messages = MutableStateFlow<List<SmsMessage>>(emptyList())

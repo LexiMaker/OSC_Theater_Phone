@@ -29,6 +29,7 @@ import com.theaterphone.data.model.CallPhase
 import com.theaterphone.service.CommandDispatcher
 import com.theaterphone.service.OscListenerService
 import com.theaterphone.sms.SmsManager
+import com.theaterphone.sms.SmsNotificationHelper
 import com.theaterphone.ui.screen.*
 import com.theaterphone.ui.theme.TheaterPhoneTheme
 
@@ -48,12 +49,10 @@ class MainActivity : ComponentActivity() {
 
         soundLibrary = SoundLibraryManager(this)
 
-        // Provide context to managers
         callManager.appContext = this
         smsManager.appContext = this
         AudioService.init(this)
 
-        // Wire up command dispatcher
         CommandDispatcher.callManager = callManager
         CommandDispatcher.smsManager = smsManager
         CommandDispatcher.soundLibrary = soundLibrary
@@ -61,7 +60,6 @@ class MainActivity : ComponentActivity() {
         requestPermissions()
         startOscService()
 
-        // Handle SMS notification tap
         handleIntent(intent)
 
         setContent {
@@ -92,7 +90,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.getBooleanExtra("open_sms", false) == true) {
+        if (intent?.getBooleanExtra(SmsNotificationHelper.EXTRA_OPEN_SMS, false) == true) {
             smsManager.openConversation()
         }
     }

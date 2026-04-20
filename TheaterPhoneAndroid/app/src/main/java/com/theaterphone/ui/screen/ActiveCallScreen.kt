@@ -21,9 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 
-/**
- * Active call screen shown after accepting. Port of iOS ActiveCallView.
- */
 @Composable
 fun ActiveCallScreen(
     callerName: String,
@@ -43,60 +40,54 @@ fun ActiveCallScreen(
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1C1C1E))
+            .background(Color(0xFF1C1C1E)),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(80.dp))
+        Spacer(modifier = Modifier.height(80.dp))
 
-            Text(callerName, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
-            if (callerNumber.isNotEmpty()) {
-                Text(callerNumber, color = Color.White.copy(alpha = 0.6f), fontSize = 18.sp)
+        Text(callerName, color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        if (callerNumber.isNotEmpty()) {
+            Text(callerNumber, color = Color.White.copy(alpha = 0.6f), fontSize = 18.sp)
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(elapsed, color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 40.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            CallButton(icon = Icons.Default.MicOff, label = "Mute", Color(0xFF2C2C2E)) {}
+            CallButton(icon = Icons.Default.VolumeUp, label = "Speaker", Color(0xFF2C2C2E)) {}
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            IconButton(
+                onClick = onEndCall,
+                modifier = Modifier
+                    .size(70.dp)
+                    .background(Color.Red, CircleShape)
+            ) {
+                Icon(
+                    Icons.Default.CallEnd,
+                    contentDescription = "End Call",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text(elapsed, color = Color.White.copy(alpha = 0.5f), fontSize = 16.sp)
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Control grid
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 40.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                CallButton(icon = Icons.Default.MicOff, label = "Mute", Color(0xFF2C2C2E)) {}
-                CallButton(icon = Icons.Default.VolumeUp, label = "Speaker", Color(0xFF2C2C2E)) {}
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // End call
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(
-                    onClick = onEndCall,
-                    modifier = Modifier
-                        .size(70.dp)
-                        .background(Color.Red, CircleShape)
-                ) {
-                    Icon(
-                        Icons.Default.CallEnd,
-                        contentDescription = "End Call",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("End Call", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
-            }
-
-            Spacer(modifier = Modifier.height(60.dp))
+            Text("End Call", color = Color.White.copy(alpha = 0.7f), fontSize = 14.sp)
         }
+
+        Spacer(modifier = Modifier.height(60.dp))
     }
 }
 

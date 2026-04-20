@@ -5,31 +5,32 @@ import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.RingtoneManager
-import android.os.Build
 import androidx.core.app.NotificationCompat
+import com.theaterphone.sms.notificationManager
 
-/**
- * Shows a full-screen notification for incoming calls — works on lock screen.
- */
 object CallNotificationHelper {
+
+    const val EXTRA_CALLER_NAME = "caller_name"
+    const val EXTRA_CALLER_NUMBER = "caller_number"
 
     private const val CHANNEL_ID = "incoming_call"
     private const val NOTIFICATION_ID = 100
+    private val RING_PATTERN = longArrayOf(0, 1000, 500, 1000, 500, 1000)
+
+    @Volatile private var channelCreated = false
 
     fun showIncomingCall(context: Context, callerName: String, callerNumber: String) {
-        createChannel(context)
+        ensureChannel(context)
 
         val fullScreenIntent = Intent(context, IncomingCallActivity::class.java).apply {
-            putExtra("caller_name", callerName)
-            putExtra("caller_number", callerNumber)
+            putExtra(EXTRA_CALLER_NAME, callerName)
+            putExtra(EXTRA_CALLER_NUMBER, callerNumber)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val fullScreenPending = PendingIntent.getActivity(
             context, 0, fullScreenIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-
-        val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_call)
@@ -38,22 +39,21 @@ object CallNotificationHelper {
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setFullScreenIntent(fullScreenPending, true)
-            .setSound(ringtoneUri)
-            .setVibrate(longArrayOf(0, 1000, 500, 1000, 500, 1000))
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
+            .setVibrate(RING_PATTERN)
             .setOngoing(true)
             .setAutoCancel(false)
             .build()
 
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(NOTIFICATION_ID, notification)
+        context.notificationManager().notify(NOTIFICATION_ID, notification)
     }
 
     fun cancelNotification(context: Context) {
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.cancel(NOTIFICATION_ID)
+        context.notificationManager().cancel(NOTIFICATION_ID)
     }
 
-    private fun createChannel(context: Context) {
+    private fun ensureChannel(context: Context) {
+        if (channelCreated) return
         val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
         val channel = NotificationChannel(
             CHANNEL_ID,
@@ -65,12 +65,12 @@ object CallNotificationHelper {
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .build())
-            vibrationPattern = longArrayOf(0, 1000, 500, 1000, 500, 1000)
+            vibrationPattern = RING_PATTERN
             enableVibration(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             setBypassDnd(true)
         }
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
+        context.notificationManager().createNotificationChannel(channel)
+        channelCreated = true
     }
 }

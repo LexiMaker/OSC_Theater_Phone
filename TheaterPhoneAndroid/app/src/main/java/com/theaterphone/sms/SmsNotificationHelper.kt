@@ -6,24 +6,26 @@ import android.content.Intent
 import android.media.RingtoneManager
 import androidx.core.app.NotificationCompat
 import com.theaterphone.ui.MainActivity
+import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Shows native Android notifications for incoming SMS messages.
- */
 object SmsNotificationHelper {
 
+    const val EXTRA_OPEN_SMS = "open_sms"
+
     private const val CHANNEL_ID = "sms_messages"
-    private var notificationId = 200
+    private val notificationId = AtomicInteger(200)
+    @Volatile private var channelCreated = false
 
     fun showSmsNotification(context: Context, sender: String, text: String) {
-        createChannel(context)
+        ensureChannel(context)
 
+        val id = notificationId.getAndIncrement()
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("open_sms", true)
+            putExtra(EXTRA_OPEN_SMS, true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val pendingIntent = PendingIntent.getActivity(
-            context, notificationId, intent,
+            context, id, intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
@@ -40,11 +42,11 @@ object SmsNotificationHelper {
             .setVibrate(longArrayOf(0, 200, 100, 200))
             .build()
 
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.notify(notificationId++, notification)
+        context.notificationManager().notify(id, notification)
     }
 
-    private fun createChannel(context: Context) {
+    private fun ensureChannel(context: Context) {
+        if (channelCreated) return
         val channel = NotificationChannel(
             CHANNEL_ID,
             "SMS Messages",
@@ -54,7 +56,10 @@ object SmsNotificationHelper {
             enableVibration(true)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
         }
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(channel)
+        context.notificationManager().createNotificationChannel(channel)
+        channelCreated = true
     }
 }
+
+internal fun Context.notificationManager(): NotificationManager =
+    getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

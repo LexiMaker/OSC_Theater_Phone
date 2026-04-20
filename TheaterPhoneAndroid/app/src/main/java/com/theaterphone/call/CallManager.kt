@@ -7,9 +7,6 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-/**
- * Manages call state machine. Port of iOS CallManager.
- */
 class CallManager {
 
     private val _phase = MutableStateFlow<CallPhase>(CallPhase.Inactive)
@@ -38,23 +35,18 @@ class CallManager {
         }
     }
 
-    fun declineCall() {
-        appContext?.let { CallNotificationHelper.cancelNotification(it) }
-        _phase.value = CallPhase.Ended
-        scheduleReset()
-    }
+    /** User declines before answering. */
+    fun declineCall() = terminate(playTone = false)
 
-    /** User ends call manually — no disconnect tone. */
-    fun endCall() {
-        appContext?.let { CallNotificationHelper.cancelNotification(it) }
-        _phase.value = CallPhase.Ended
-        scheduleReset()
-    }
+    /** User ends the active call manually. */
+    fun endCall() = terminate(playTone = false)
 
-    /** OSC /hangup — plays disconnect tone. */
-    fun hangUp() {
+    /** OSC `/hangup` — plays disconnect tone. */
+    fun hangUp() = terminate(playTone = true)
+
+    private fun terminate(playTone: Boolean) {
         appContext?.let { CallNotificationHelper.cancelNotification(it) }
-        AudioService.playEndCallTone()
+        if (playTone) AudioService.playEndCallTone()
         _phase.value = CallPhase.Ended
         scheduleReset()
     }

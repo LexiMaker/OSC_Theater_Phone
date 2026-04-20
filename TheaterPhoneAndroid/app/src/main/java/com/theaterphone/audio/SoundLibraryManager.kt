@@ -12,10 +12,7 @@ import java.io.File
 import java.util.UUID
 import com.theaterphone.data.model.SoundItem
 
-/**
- * Manages imported audio files — import, persist, play by name.
- * Port of iOS SoundLibraryManager.
- */
+/** Manages imported audio files — import, persist, play by name. */
 class SoundLibraryManager(private val context: Context) {
 
     private val _sounds = MutableStateFlow<List<SoundItem>>(emptyList())
@@ -29,15 +26,11 @@ class SoundLibraryManager(private val context: Context) {
     /** Temporary URI from file picker, used by SettingsScreen */
     var pendingUri: Uri? = null
 
-    private val audioDir: File
-        get() {
-            val dir = File(context.filesDir, "AudioLibrary")
-            if (!dir.exists()) dir.mkdirs()
-            return dir
-        }
+    private val audioDir: File by lazy {
+        File(context.filesDir, "AudioLibrary").apply { if (!exists()) mkdirs() }
+    }
 
-    private val storageFile: File
-        get() = File(context.filesDir, "sound_library.json")
+    private val storageFile: File by lazy { File(context.filesDir, "sound_library.json") }
 
     init {
         loadSounds()

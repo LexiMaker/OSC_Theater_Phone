@@ -15,25 +15,22 @@ class SoundLibraryManager: ObservableObject {
     private var player: AVAudioPlayer?
     private let storageFile = "sound_library.json"
 
-    init() {
-        loadSounds()
-    }
-
-    // MARK: - Documents Directory
-
-    private var documentsDir: URL {
+    private lazy var documentsDir: URL =
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-    }
 
-    private var audioDir: URL {
+    private lazy var audioDir: URL = {
         let dir = documentsDir.appendingPathComponent("AudioLibrary")
         if !FileManager.default.fileExists(atPath: dir.path) {
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
         return dir
-    }
+    }()
 
-    // MARK: - Import
+    init() {
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
+        try? AVAudioSession.sharedInstance().setActive(true)
+        loadSounds()
+    }
 
     func importFile(from sourceURL: URL, name: String) {
         let accessing = sourceURL.startAccessingSecurityScopedResource()
@@ -56,8 +53,6 @@ class SoundLibraryManager: ObservableObject {
         }
     }
 
-    // MARK: - Delete
-
     func deleteSound(id: UUID) {
         guard let index = sounds.firstIndex(where: { $0.id == id }) else { return }
         let item = sounds[index]
@@ -67,8 +62,6 @@ class SoundLibraryManager: ObservableObject {
         saveSounds()
     }
 
-    // MARK: - Playback
-
     func play(name: String) {
         guard let item = sounds.first(where: { $0.name.lowercased() == name.lowercased() }) else {
             print("SoundLibrary: no sound named '\(name)'")
@@ -76,8 +69,6 @@ class SoundLibraryManager: ObservableObject {
         }
         let fileURL = audioDir.appendingPathComponent(item.fileName)
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, options: .mixWithOthers)
-            try AVAudioSession.sharedInstance().setActive(true)
             player = try AVAudioPlayer(contentsOf: fileURL)
             player?.delegate = nil
             player?.play()
@@ -97,8 +88,6 @@ class SoundLibraryManager: ObservableObject {
         player = nil
         DispatchQueue.main.async { self.nowPlaying = nil }
     }
-
-    // MARK: - Persistence
 
     private func saveSounds() {
         let url = documentsDir.appendingPathComponent(storageFile)

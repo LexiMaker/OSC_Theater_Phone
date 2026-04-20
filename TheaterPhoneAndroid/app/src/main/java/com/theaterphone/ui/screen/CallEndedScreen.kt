@@ -11,9 +11,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/**
- * Brief "Call Ended" overlay. Port of iOS CallEndedView.
- */
 @Composable
 fun CallEndedScreen() {
     Box(

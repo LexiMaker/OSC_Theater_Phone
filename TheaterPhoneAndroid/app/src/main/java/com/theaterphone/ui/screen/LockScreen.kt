@@ -15,10 +15,7 @@ import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * Lock screen style view showing clock and connection status.
- * Port of iOS LockScreenView.
- */
+/** Lock screen style view showing clock and connection status. */
 @Composable
 fun LockScreen() {
     val isListening by OscListenerService.isListening.collectAsState()

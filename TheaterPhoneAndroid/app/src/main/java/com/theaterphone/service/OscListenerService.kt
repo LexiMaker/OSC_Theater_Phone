@@ -14,15 +14,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.net.*
 
-/**
- * Foreground Service that listens for OSC/Plain Text commands over UDP + TCP.
- * Port of iOS OSCManager network layer.
- */
 class OscListenerService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "osc_listener"
+        /** 12 hours — covers a show comfortably, but bounded so a killed process can't leak the lock forever. */
+        private const val WAKE_LOCK_TIMEOUT_MS = 12L * 60 * 60 * 1000
 
         val isListening = MutableStateFlow(false)
         val lastMessage = MutableStateFlow("")
@@ -86,8 +84,6 @@ class OscListenerService : Service() {
         startListening()
     }
 
-    // MARK: - UDP
-
     private fun startUdpListener() {
         scope.launch {
             try {
@@ -118,8 +114,6 @@ class OscListenerService : Service() {
             }
         }
     }
-
-    // MARK: - TCP
 
     private fun startTcpListener() {
         scope.launch {
@@ -166,8 +160,6 @@ class OscListenerService : Service() {
         }
     }
 
-    // MARK: - Handle Data
-
     private suspend fun handleReceivedData(data: ByteArray, senderIp: String) {
         if (mode == CommunicationMode.OSC) {
             val command = OscParser.parse(data)
@@ -194,8 +186,6 @@ class OscListenerService : Service() {
         }
     }
 
-    // MARK: - Ping/Pong
-
     init {
         CommandDispatcher.onPing = { senderIp -> sendPong(senderIp) }
     }
@@ -218,8 +208,6 @@ class OscListenerService : Service() {
             }
         }
     }
-
-    // MARK: - Notification
 
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
@@ -249,12 +237,10 @@ class OscListenerService : Service() {
             .build()
     }
 
-    // MARK: - Wake Lock
-
     private fun acquireWakeLock() {
         val pm = getSystemService(POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "TheaterPhone::OscListener")
-        wakeLock?.acquire()
+        wakeLock?.acquire(WAKE_LOCK_TIMEOUT_MS)
     }
 
     private fun releaseWakeLock() {
@@ -262,30 +248,21 @@ class OscListenerService : Service() {
         wakeLock = null
     }
 
-    // MARK: - Local IP
-
     private fun updateLocalIp() {
         try {
-            val interfaces = NetworkInterface.getNetworkInterfaces()
-            for (intf in interfaces) {
-                if (intf.name == "wlan0" || intf.name == "en0") {
-                    for (addr in intf.inetAddresses) {
-                        if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                            localIp.value = addr.hostAddress ?: "..."
-                            return
-                        }
-                    }
-                }
-            }
-            // Fallback: any non-loopback IPv4
+            var fallback: String? = null
             for (intf in NetworkInterface.getNetworkInterfaces()) {
                 for (addr in intf.inetAddresses) {
-                    if (!addr.isLoopbackAddress && addr is Inet4Address) {
-                        localIp.value = addr.hostAddress ?: "..."
+                    if (addr.isLoopbackAddress || addr !is Inet4Address) continue
+                    val host = addr.hostAddress ?: continue
+                    if (intf.name == "wlan0" || intf.name == "en0") {
+                        localIp.value = host
                         return
                     }
+                    if (fallback == null) fallback = host
                 }
             }
+            localIp.value = fallback ?: "Not available"
         } catch (e: Exception) {
             localIp.value = "Not available"
         }

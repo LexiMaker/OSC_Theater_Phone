@@ -20,9 +20,6 @@ import com.theaterphone.data.model.SmsMessage
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * iMessage-style chat view. Port of iOS SMSConversationView.
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsConversationScreen(
